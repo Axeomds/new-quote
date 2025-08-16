@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Video Quote Calculator</title>
+<style>
+  body { font-family: sans-serif; background:#f8fafc; margin:0; color:#0f172a; }
+  .container { max-width: 1000px; margin: 0 auto; padding: 24px; }
+  h1 { margin:0 0 8px; font-size: 24px; }
+  .grid { display:grid; gap:16px; }
+  @media(min-width:768px){.grid.cols-3{grid-template-columns:repeat(3,1fr)}.grid.cols-2{grid-template-columns:repeat(2,1fr)}}
+  .card { background:#fff; border:1px solid #e2e8f0; border-radius:12px; padding:16px; }
+  .card h2{margin:0 0 12px;font-size:16px}
+  label{display:block;font-size:13px;margin-bottom:4px}
+  input[type=number],input[type=text]{width:100%;padding:8px;border:1px solid #e2e8f0;border-radius:8px;font-size:14px}
+  .btn{padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;cursor:pointer}
+  .btn.primary{background:#0f172a;color:#fff}
+  .kpi h3{font-size:12px;text-transform:uppercase;color:#64748b;margin:0}
+  .kpi .value{font-size:28px;font-weight:600;margin-top:4px}
+  ul{margin:8px 0 0;padding-left:18px;font-size:14px;color:#475569}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Video Quote Calculator</h1>
+
+  <div class="grid cols-3">
+    <div class="card">
+      <h2>Short Form</h2>
+      <label># of videos</label>
+      <input id="shortCount" type="number" min="0" value="0">
+      <label>Cost per video</label>
+      <input id="shortRate" type="number" min="0" value="0">
+    </div>
+    <div class="card">
+      <h2>Long Form</h2>
+      <label># of videos</label>
+      <input id="longCount" type="number" min="0" value="0">
+      <label>Cost per video</label>
+      <input id="longRate" type="number" min="0" value="0">
+    </div>
+    <div class="card">
+      <h2>Filming</h2>
+      <label>Hours</label>
+      <input id="hours" type="number" min="0" value="0">
+      <label>Hourly rate</label>
+      <input id="hourlyRate" type="number" min="0" value="0">
+    </div>
+  </div>
+
+  <div class="grid cols-3" style="margin-top:16px">
+    <div class="card">
+      <h2>Profit</h2>
+      <label>Profit margin (%)</label>
+      <input id="margin" type="number" min="0" max="99" value="60">
+    </div>
+    <div class="card">
+      <h2>Processor Fees</h2>
+      <label>Percent (%)</label>
+      <input id="feePct" type="number" min="0" step="0.1" value="2.9">
+      <label>Fixed per charge</label>
+      <input id="feeFixed" type="number" min="0" step="0.01" value="0.30">
+      <label><input type="checkbox" id="passFees"> Pass fees to client</label>
+    </div>
+    <div class="card">
+      <h2>Currency</h2>
+      <label>Symbol</label>
+      <input id="currency" type="text" maxlength="3" value="$">
+      <button class="btn" id="clearBtn" style="margin-top:8px">Clear</button>
+    </div>
+  </div>
+
+  <div class="grid cols-2" style="margin-top:16px">
+    <div class="card kpi">
+      <h3>Subtotal (cost)</h3>
+      <div class="value" id="subtotalValue">$0.00</div>
+      <ul id="breakdownList"></ul>
+    </div>
+    <div class="card kpi">
+      <h3>Final Quote</h3>
+      <div class="value" id="grandTotalValue">$0.00</div>
+      <ul id="totalsList"></ul>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const $ = id=>document.getElementById(id);
+  const inputs=[ 'shortCount','shortRate','longCount','longRate','hours','hourlyRate','margin','feePct','feeFixed','currency','passFees']
+    .map(id=>$(id));
+
+  function num(v){return Number(v)||0}
+  function fmt(n,sym){return (sym||'$')+n.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}
+
+  function compute(){
+    const sc=num($('shortCount').value), sr=num($('shortRate').value);
+    const lc=num($('longCount').value), lr=num($('longRate').value);
+    const h=num($('hours').value), hr=num($('hourlyRate').value);
+    const m=Math.min(Math.max(num($('margin').value),0),99)/100;
+    const p=Math.max(num($('feePct').value),0)/100;
+    const f=Math.max(num($('feeFixed').value),0);
+    const cur=$('currency').value||'$';
+    const pass=$('passFees').checked;
+
+    const subtotal=sc*sr+lc*lr+h*hr;
+    const base=subtotal/(1-m); // margin price before fees
+    let grand=base, fees=base*p+f;
+
+    if(pass){ // client pays fees extra
+      grand=base+fees;
+    }
+    const profit=grand-fees-subtotal;
+
+    $('subtotalValue').textContent=fmt(subtotal,cur);
+    $('breakdownList').innerHTML=`<li>Short-form: ${fmt(sc*sr,cur)}</li><li>Long-form: ${fmt(lc*lr,cur)}</li><li>Filming: ${fmt(h*hr,cur)}</li>`;
+    $('grandTotalValue').textContent=fmt(grand,cur);
+    $('totalsList').innerHTML=`<li>Processor fees: ${fmt(fees,cur)} (${(p*100).toFixed(2)}% + ${fmt(f,cur)})</li><li>Client pays: <b>${fmt(grand,cur)}</b></li><li>Profit after fees: ${fmt(profit,cur)}</li>`;
+  }
+
+  inputs.forEach(i=>i.addEventListener('input',compute));
+  $('clearBtn').addEventListener('click',()=>{inputs.forEach(i=>{if(i.type==='number'||i.type==='text')i.value=0;if(i.type==='checkbox')i.checked=false});$('currency').value='$';compute()})
+  compute();
+})();
+</script>
+</body>
+</html>
